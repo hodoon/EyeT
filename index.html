@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>윤도훈 | 백엔드 개발자 포트폴리오</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter 폰트 (Tailwind 기본 폰트와 잘 어울림) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans KR', 'sans-serif'],
+                    },
+                    colors: {
+                        'brand-blue': '#3b82f6', // 강조 색상
+                        'dark-bg': '#111827',     // 메인 배경
+                        'dark-card': '#1f2937',   // 카드 배경
+                        'dark-text': '#f3f4f6',   // 메인 텍스트
+                        'dark-subtext': '#9ca3af', // 서브 텍스트
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 스크롤바 스타일링 (선택 사항) */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body class="bg-dark-bg text-dark-text font-sans antialiased">
+
+    <!-- ===== 네비게이션/헤더 ===== -->
+    <header class="sticky top-0 z-50 bg-dark-bg/90 backdrop-blur-sm border-b border-dark-card">
+        <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- 로고/이름 -->
+                <div class="flex-shrink-0">
+                    <a href="#" class="text-2xl font-bold text-white">윤도훈 <span class="text-brand-blue">Portfolio</span></a>
+                </div>
+                <!-- 네비게이션 링크 -->
+                <div class="hidden sm:block">
+                    <div class="flex space-x-4">
+                        <a href="#about" class="text-dark-subtext hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">About Me</a>
+                        <a href="#skills" class="text-dark-subtext hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Skills</a>
+                        <a href="#project" class="text-dark-subtext hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Project: EyeT</a>
+                        <a href="#contact" class="text-dark-subtext hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Contact</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- ===== 메인 컨텐츠 ===== -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+
+        <!-- 1. Hero 섹션 -->
+        <section id="hero" class="text-center mb-24 pt-16">
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight">
+                윤도훈
+            </h1>
+            <p class="mt-6 max-w-3xl mx-auto text-xl sm:text-2xl text-dark-subtext">
+                “기초를 단단히, 성장 속도는 빠르게 — <br class="sm:hidden">오늘도 성장 중인 <span class="text-brand-blue font-semibold">백엔드 개발자</span>입니다.”
+            </p>
+            <!-- 연락처 아이콘 -->
+            <div id="contact" class="flex justify-center space-x-6 mt-10">
+                <a href="mailto:ehgns79513@gmail.com" target="_blank" class="text-dark-subtext hover:text-brand-blue transition-transform transform hover:scale-110" title="Email">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                </a>
+                <a href="https://github.com/hodoon" target="_blank" class="text-dark-subtext hover:text-brand-blue transition-transform transform hover:scale-110" title="GitHub">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                    </svg>
+                </a>
+                <a href="https://www.linkedin.com/in/dohoon-yoon-ab223335a/" target="_blank" class="text-dark-subtext hover:text-brand-blue transition-transform transform hover:scale-110" title="LinkedIn">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                    </svg>
+                </a>
+            </div>
+        </section>
+
+        <!-- 2. About Me -->
+        <section id="about" class="mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-white text-center mb-12">About Me</h2>
+            <div class="flex flex-col md:flex-row items-center gap-10 md:gap-16 bg-dark-card p-8 rounded-lg shadow-lg">
+                <!-- 프로필 이미지 -->
+                <div class="flex-shrink-0">
+                    <img class="h-48 w-48 md:h-64 md:w-64 rounded-full object-cover shadow-md border-4 border-dark-bg" 
+                         src="https://placehold.co/400x400/3b82f6/f3f4f6?text=YDH" 
+                         alt="윤도훈 프로필 이미지"
+                         onerror="this.onerror=null;this.src='https://placehold.co/400x400/334155/E2E8F0?text=Profile+Image';">
+                </div>
+                <!-- 상세 소개 -->
+                <div class="flex-1 text-lg text-dark-text space-y-4">
+                    <p>
+                        기초를 단단히 다지고, 빠른 성장 속도로 새로운 기술을 흡수하는 개발자 윤도훈입니다. 저는 문제를 단순히 해결하는 것을 넘어, “왜 그렇게 동작하는가”를 이해하며 구조적으로 개선하는 데에 큰 흥미를 느낍니다.
+                    </p>
+                    <p>
+                        현재는 AI 기반 OTT 구독 관리 및 콘텐츠 추천 시스템을 개발하며, 실제 사용자의 편의를 높이는 서비스를 만드는 것에 집중하고 있습니다. Spring Boot와 React Native, 그리고 OpenBanking API를 활용해 백엔드부터 프론트엔드까지 직접 설계하고 구현했습니다. 특히 JWT 인증 구조, Redis 캐싱, CI 기반 사용자 중복 방지 로직 등 안정적이고 확장 가능한 아키텍처를 구현하는 데 자신 있습니다.
+                    </p>
+                    <p>
+                        이번 프로젝트를 통해 제가 가장 보여주고 싶은 역량은 문제를 기술적으로 풀어내는 사고력과 서비스를 완성도 있게 구현하는 실전 능력입니다. 단순히 기능을 만드는 것을 넘어, 사용자가 믿고 쓸 수 있는 시스템을 구축하는 개발자로 성장하고 있습니다.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. 기술 스택 -->
+        <section id="skills" class="mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-white text-center mb-12">Skills</h2>
+            <div class="bg-dark-card p-8 rounded-lg shadow-lg">
+                <!-- 백엔드 -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-brand-blue mb-4">Backend</h3>
+                    <div class="flex flex-wrap gap-3">
+                        <span class="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium">Spring Boot</span>
+                        <span class="bg-orange-500 text-white px-4 py-2 rounded-full text-sm font-medium">Java</span>
+                        <span class="bg-green-500 text-white px-4 py-2 rounded-full text-sm font-medium">Python</span>
+                        <span class="bg-teal-500 text-white px-4 py-2 rounded-full text-sm font-medium">FastAPI</span>
+                        <span class="bg-sky-600 text-white px-4 py-2 rounded-full text-sm font-medium">MySQL</span>
+                        <span class="bg-indigo-500 text-white px-4 py-2 rounded-full text-sm font-medium">PostgreSQL</span>
+                        <span class="bg-red-500 text-white px-4 py-2 rounded-full text-sm font-medium">Oracle</span>
+                    </div>
+                </div>
+                <!-- 프론트엔드 -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-brand-blue mb-4">Frontend</h3>
+                    <div class="flex flex-wrap gap-3">
+                        <span class="bg-blue-700 text-white px-4 py-2 rounded-full text-sm font-medium">TypeScript</span>
+                        <span class="bg-yellow-500 text-black px-4 py-2 rounded-full text-sm font-medium">JavaScript</span>
+                        <span class="bg-cyan-500 text-white px-4 py-2 rounded-full text-sm font-medium">React</span>
+                        <span class="bg-orange-600 text-white px-4 py-2 rounded-full text-sm font-medium">HTML5</span>
+                    </div>
+                </div>
+                <!-- DevOps & Tools -->
+                <div>
+                    <h3 class="text-xl font-semibold text-brand-blue mb-4">DevOps & Tools</h3>
+                    <div class="flex flex-wrap gap-3">
+                        <span class="bg-gray-600 text-white px-4 py-2 rounded-full text-sm font-medium">Git</span>
+                        <span class="bg-blue-500 text-white px-4 py-2 rounded-full text-sm font-medium">Docker</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. 프로젝트 상세 -->
+        <section id="project" class="mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-white text-center mb-6">Project: <span class="text-brand-blue">EyeT</span></h2>
+            <p class="text-center text-xl text-dark-subtext mb-12">AI 기반 사시 유형 판별 및 교정 훈련 솔루션</p>
+
+            <!-- 프로젝트 메인 이미지 -->
+            <img class="w-full h-auto object-cover rounded-lg shadow-lg mb-12" 
+                 src="https://placehold.co/1200x600/3b82f6/f3f4f6?text=EyeT+Project+Main+Image" 
+                 alt="EyeT 프로젝트 메인 이미지"
+                 onerror="this.onerror=null;this.src='https://placehold.co/1200x600/334155/E2E8F0?text=Project+EyeT';">
+
+            <!-- 문제 정의 -->
+            <article class="mb-12">
+                <h3 class="text-2xl font-semibold text-white mb-4">1. 문제 정의 (Problem)</h3>
+                <div class="bg-dark-card p-6 rounded-lg shadow-md">
+                    <p class="text-dark-text text-lg leading-relaxed">
+                        소아 사시는 조기에 발견하지 못하면 약시나 시력 저하로 이어질 수 있습니다. 하지만 기존 병원 기반 진단은 정기 방문이 필요하고 가정에서 자가 진단이 어렵다는 문제가 있었습니다.
+                        <br><br>
+                        본 프로젝트의 목표는 <span class="text-brand-blue font-semibold">가정에서도 쉽고 정확하게 사시 유형을 판별</span>하고, 맞춤형 교정 훈련을 제공하여 조기 교정을 지원하는 AI 기반 솔루션을 개발하는 것입니다.
+                    </p>
+                </div>
+            </article>
+
+            <!-- 아키텍처 -->
+            <article class="mb-12">
+                <h3 class="text-2xl font-semibold text-white mb-4">2. 아키텍처 (Architecture)</h3>
+                <div class="bg-dark-card p-6 rounded-lg shadow-md">
+                    <p class="text-dark-text text-lg mb-6">
+                        카메라 입력 → MediaPipe Iris → YOLOv5 + RoboFlow → 교정 게임 엔진 구조로 설계하였습니다.
+                    </p>
+                    <img class="w-full h-auto object-contain rounded-lg shadow-md bg-gray-100 p-4" 
+                         src="https://placehold.co/1000x600/f3f4f6/1f2937?text=Architecture+Diagram" 
+                         alt="EyeT 아키텍처 다이어그램"
+                         onerror="this.onerror=null;this.src='https://placehold.co/1000x600/334155/E2E8F0?text=Architecture';">
+                    
+                    <ul class="list-disc list-inside mt-6 space-y-2 text-dark-text text-lg">
+                        <li><span class="font-semibold text-white">MediaPipe Iris:</span> 실시간 시선 추적, 동공 좌표 3D 추출</li>
+                        <li><span class="font-semibold text-white">YOLOv5 + RoboFlow:</span> 사시 유형(상/하/좌/우) 분류를 위해 학습된 커스텀 객체 탐지 모델</li>
+                        <li><span class="font-semibold text-white">게임 엔진 (Unity / React Native 연동):</span> 맞춤형 교정 훈련 제공</li>
+                        <li><span class="font-semibold text-white">데이터 관리:</span> Roboflow를 통한 이미지 라벨링 및 데이터 증강 적용</li>
+                        <li><span class="font-semibold text-white">배포 환경:</span> PC 및 모바일 카메라 기반 실시간 동작 지원, 최소한의 하드웨어 요구</li>
+                    </ul>
+                </div>
+            </article>
+
+            <!-- 핵심 기능 -->
+            <article class="mb-12">
+                <h3 class="text-2xl font-semibold text-white mb-4">3. 핵심 기능 (Features)</h3>
+                <div class="grid md:grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- 기능 1 -->
+                    <div class="bg-dark-card rounded-lg shadow-md overflow-hidden">
+                        <img class="w-full h-48 object-cover" src="https://placehold.co/600x400/3b82f6/f3f4f6?text=Feature+1:+시선+추적" alt="실시간 동공 시선 추적" onerror="this.onerror=null;this.src='https://placehold.co/600x400/334155/E2E8F0?text=Feature+1';">
+                        <div class="p-6">
+                            <h4 class="text-xl font-semibold text-brand-blue mb-2">실시간 동공 시선 추적</h4>
+                            <p class="text-dark-text">MediaPipe Iris 모델을 활용해 양쪽 눈의 홍채 중심 좌표와 동공 위치를 실시간으로 추출하여 시선 이동을 X/Y 좌표로 변환하여 사시 각도를 계산, OpenCV 기반 필터링으로 조명/각도 변화에도 안정적 추적 가능</p>
+                        </div>
+                    </div>
+                    <!-- 기능 2 -->
+                    <div class="bg-dark-card rounded-lg shadow-md overflow-hidden">
+                        <img class="w-full h-48 object-cover" src="https://placehold.co/600x400/3b82f6/f3f4f6?text=Feature+2:+사시+분류" alt="사시 유형 분류" onerror="this.onerror=null;this.src='https://placehold.co/600x400/334155/E2E8F0?text=Feature+2';">
+                        <div class="p-6">
+                            <h4 class="text-xl font-semibold text-brand-blue mb-2">사시 유형 분류</h4>
+                            <p class="text-dark-text">YOLOv5 모델을 RoboFlow로 라벨링, 증강한 약 1,500장의 학습 데이터로 학습하여 상사시, 하사시, 좌사시, 우사시를 정확히 분류한 후 MediaPipe Iris로 추출한 눈 영역과 동공 좌표를 입력으로 사용하여 맞춤형 교정 훈련에 연동</p>
+                        </div>
+                    </div>
+                    <!-- 기능 3 -->
+                    <div class="bg-dark-card rounded-lg shadow-md overflow-hidden">
+                        <img class="w-full h-48 object-cover" src="https://placehold.co/600x400/3b82f6/f3f4f6?text=Feature+3:+교정+게임" alt="맞춤형 교정 게임" onerror="this.onerror=null;this.src='https://placehold.co/600x400/334155/E2E8F0?text=Feature+3';">
+                        <div class="p-6">
+                            <h4 class="text-xl font-semibold text-brand-blue mb-2">맞춤형 교정 게임</h4>
+                            <p class="text-dark-text">사시 유형에 맞춰 게임 내 목표물 위치와 난이도를 조정하여 사용자에게 맞춤형 훈련을 제공</p>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 나의 역할 -->
+            <article class="mb-12">
+                <h3 class="text-2xl font-semibold text-white mb-4">4. 나의 역할 및 기여 (My Role)</h3>
+                <div class="bg-dark-card p-6 rounded-lg shadow-md">
+                    <p class="text-dark-text text-lg leading-relaxed">
+                        MediaPipe Iris 기반 실시간 동공 추적 모듈 설계 및 구현, YOLOv5 모델 학습용 데이터셋 구축, RoboFlow 활용 데이터 라벨링 및 증강, 사시 유형 분류 모델 학습, 정확도 검증 및 튜닝, 교정 게임 연동 로직 설계 및 Unity/React 통합을 담당했습니다.
+                    </p>
+                </div>
+            </article>
+
+            <!-- 결과 및 성과 -->
+            <article class="mb-12">
+                <h3 class="text-2xl font-semibold text-white mb-4">5. 결과 및 성과 (Results)</h3>
+                <div class="bg-dark-card p-6 rounded-lg shadow-md">
+                    <ul class="list-disc list-inside space-y-3 text-dark-text text-lg">
+                        <li>YOLOv5 모델 정확도: <span class="font-semibold text-white">상사시(93.4%), 하사시(93.2%), 좌사시(92.8%), 우사시(92.6%)</span></li>
+                        <li>MediaPipe Iris 기반 실시간 시선 추적: <span class="font-semibold text-white">CPU 환경에서도 25~30 FPS 실현</span></li>
+                        <li>맞춤형 교정 게임 연동 성공, 사용자 테스트에서 <span class="font-semibold text-white">흥미도 및 지속 참여율 증가</span> 확인</li>
+                    </ul>
+                </div>
+            </article>
+
+            <!-- 회고 -->
+            <article>
+                <h3 class="text-2xl font-semibold text-white mb-4">6. 회고 (Retrospective)</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- 배운 점 -->
+                    <div class="bg-dark-card p-6 rounded-lg shadow-md">
+                        <h4 class="text-xl font-semibold text-green-400 mb-3">배운 점 (What I Learned)</h4>
+                        <ul class="list-disc list-inside space-y-2 text-dark-text">
+                            <li>YOLOv5 객체 탐지와 MediaPipe Iris 기반 시선 추적을 결합하여 실시간 AI 서비스 설계를 경험.</li>
+                            <li>Roboflow를 활용한 데이터 증강과 라벨링 과정의 중요성을 이해.</li>
+                        </ul>
+                    </div>
+                    <!-- 개선점 -->
+                    <div class="bg-dark-card p-6 rounded-lg shadow-md">
+                        <h4 class="text-xl font-semibold text-yellow-400 mb-3">개선점 (Improvements)</h4>
+                        <ul class="list-disc list-inside space-y-2 text-dark-text">
+                            <li>모바일 환경 최적화를 위해 YOLOv5 경량화 또는 TensorRT 변환 필요.</li>
+                            <li>장기간 학습 데이터 축적을 통한 사시 분류 정확도 향상 및 추가 안질환 확장 가능.</li>
+                            <li>게임 피드백 알고리즘 고도화, 시선 정확도 기반 난이도 자동 조정 기능 개선 가능.</li>
+                        </ul>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+    </main>
+
+    <!-- ===== 꼬리말 ===== -->
+    <footer class="bg-dark-card border-t border-gray-700">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
+            <!-- 연락처 아이콘 -->
+            <div class="flex justify-center space-x-6 mb-4">
+                <a href="mailto:ehgns79513@gmail.com" target="_blank" class="text-dark-subtext hover:text-brand-blue transition-transform transform hover:scale-110" title="Email">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                </a>
+                <a href="https://github.com/hodoon" target="_blank" class="text-dark-subtext hover:text-brand-blue transition-transform transform hover:scale-110" title="GitHub">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                    </svg>
+                </a>
+                <a href="https://www.linkedin.com/in/dohoon-yoon-ab223335a/" target="_blank" class="text-dark-subtext hover:text-brand-blue transition-transform transform hover:scale-110" title="LinkedIn">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                    </svg>
+                </a>
+            </div>
+            <p class="text-dark-subtext text-sm">
+                © <span id="current-year"></span> 윤도훈. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // 현재 연도 자동 업데이트
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+    </script>
+</body>
+</html>
