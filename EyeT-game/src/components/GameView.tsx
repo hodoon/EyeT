@@ -1,3 +1,4 @@
+// hodoon/eyet/EyeT-eaaf522f0858267e704c53039fcda85cb12ae3d5/EyeT-game/src/components/GameView.tsx
 import React, { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import type { DiagnosisResult } from '../App';
@@ -47,13 +48,15 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
       gazeTrackerRef.current = tracker;
       console.log("EyeGazeTracker 초기화 완료");
 
-      // 3. Phaser 게임 설정
+      // 3. Phaser 게임 설정 (데이터를 변수로 관리)
+      const gameDimensions = { width: 1024, height: 768 };
+
       const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.AUTO,
-        width: 1024,
-        height: 768,
+        width: gameDimensions.width,
+        height: gameDimensions.height,
         parent: 'phaser-game-container',
-        scene: [ArcheryGameScene],
+        scene: [], // ✅ [수정] 씬을 비워두고 나중에 수동으로 추가
         backgroundColor: '#f0f0f0',
         physics: {
           default: 'arcade',
@@ -67,13 +70,13 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
       game = new Phaser.Game(config);
       phaserGameRef.current = game;
 
-      // 5. 게임 씬이 준비되면, 진단 결과(diagnosisResult)를 씬으로 전달
-      game.events.on('ready', () => {
-        game.registry.set('diagnosis', diagnosisResult);
-        game.registry.set('gameDimensions', { width: config.width, height: config.height });
+      // 5. ✅ [수정] 씬을 수동으로 'add'하고 'start'하면서 init 데이터를 주입
+      game.scene.add('ArcheryGameScene', ArcheryGameScene, true, {
+        diagnosis: diagnosisResult,
+        dimensions: gameDimensions
       });
 
-      // 6. 매 프레임마다 시선 좌표를 React -> Phaser로 전달
+      // 6. 매 프레임마다 시선 좌표를 React -> Phaser로 전달 (GazePoint는 Registry 사용)
       const gameLoop = async () => {
         if (tracker && game && videoElement) {
           const normalizedPoint = await tracker.getGazePoint(videoElement);
@@ -83,6 +86,7 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
               x: normalizedPoint.x * (config.width as number),
               y: normalizedPoint.y * (config.height as number)
             };
+            // 시선 좌표(gazePoint)는 매 프레임 업데이트되므로 registry를 계속 사용합니다.
             game.registry.set('gazePoint', gazePoint);
           }
         }
@@ -109,6 +113,7 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
 
   
   // --- 렌더링 (UI) ---
+  // (기존 코드와 동일)
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
       <h2 className="text-3xl font-bold mb-4">맞춤형 훈련 게임: 양궁</h2>
