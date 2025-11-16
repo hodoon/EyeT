@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import type { DiagnosisResult } from '../App';
-import { EyeGazeTracker } from '../game/EyeGazeTracker'; // 1. 시선 추적기 import
-import { ArcheryGameScene } from '../game/scenes/ArcheryGameScene'; // 2. 새 게임 씬 import
+import { EyeGazeTracker } from '../game/EyeGazeTracker';
+import { ArcheryGameScene } from '../game/scenes/ArcheryGameScene';
 
 // GameView가 받을 Props 정의
 interface GameViewProps {
@@ -19,7 +19,6 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
 
   // 컴포넌트 마운트 시 게임 및 시선 추적기 초기화
   useEffect(() => {
-    // 진단 결과가 없으면 즉시 복귀
     if (!diagnosisResult) {
       console.error("GameView: 진단 결과가 없습니다. 진단 화면으로 돌아갑니다.");
       onReturn();
@@ -35,7 +34,7 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
       const videoElement = document.createElement('video');
       videoElement.autoplay = true;
       videoElement.playsInline = true;
-      videoElement.style.display = 'none'; // 화면에는 보이지 않음
+      videoElement.style.display = 'none';
       document.body.appendChild(videoElement);
       
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -51,9 +50,9 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
       // 3. Phaser 게임 설정
       const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.AUTO,
-        width: 1024, // 게임 해상도
+        width: 1024,
         height: 768,
-        parent: 'phaser-game-container', // 게임 캔버스를 렌더링할 div의 id
+        parent: 'phaser-game-container',
         scene: [ArcheryGameScene],
         backgroundColor: '#f0f0f0',
         physics: {
@@ -77,24 +76,20 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
       // 6. 매 프레임마다 시선 좌표를 React -> Phaser로 전달
       const gameLoop = async () => {
         if (tracker && game && videoElement) {
-          // 시선 좌표 (0.0 ~ 1.0)
           const normalizedPoint = await tracker.getGazePoint(videoElement);
           
           if (normalizedPoint) {
-            // 게임 좌표 (0 ~ 1024)로 변환
             const gazePoint = {
               x: normalizedPoint.x * (config.width as number),
               y: normalizedPoint.y * (config.height as number)
             };
-            
-            // 'gazePoint'라는 키로 Phaser 씬에 좌표 전달
             game.registry.set('gazePoint', gazePoint);
           }
         }
         animationFrameRef.current = requestAnimationFrame(gameLoop);
       };
       
-      gameLoop(); // 루프 시작
+      gameLoop();
     };
 
     initGame();
@@ -122,7 +117,6 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
         진단 결과: <span className="font-bold text-yellow-400">{diagnosisResult}</span> (훈련 시작)
       </p>
 
-      {/* Phaser 게임 캔버스가 이 div 안에 생성됩니다. */}
       <div id="phaser-game-container" 
            className="w-full max-w-4xl h-[768px] bg-black rounded-lg shadow-lg mb-6"
            style={{ width: '1024px', height: '768px' }}>

@@ -145,6 +145,7 @@ const DiagnosisView: React.FC<DiagnosisViewProps> = ({ onDiagnosisComplete }) =>
       canvas.width = VIDEO_WIDTH;
       canvas.height = VIDEO_HEIGHT;
 
+      // 캡처 시에도 거울 모드 적용
       context.translate(canvas.width, 0); 
       context.scale(-1, 1); 
 
@@ -176,7 +177,7 @@ const DiagnosisView: React.FC<DiagnosisViewProps> = ({ onDiagnosisComplete }) =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
-  // --- 렌더링 UI ---
+  // --- 렌더링 UI (Tailwind v3 클래스) ---
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
       
