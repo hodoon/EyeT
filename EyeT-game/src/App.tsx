@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import DiagnosisView from './components/DiagnosisView'
-import GameView from './components/GameView' // 1. GameView import
+import GameView 
+from './components/GameView' // 1. GameView import
 
 // 앱의 현재 상태: '진단' 또는 '게임'
 type AppView = 'diagnosis' | 'game';
