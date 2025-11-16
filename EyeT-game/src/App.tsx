@@ -1,16 +1,13 @@
-// src/App.tsx
-
-import React from "react";
-import DiagnosisView from "./components/DiagnosisView"; // 방금 만든 컴포넌트 import
+import React from 'react'
+// import './App.css' // App.css가 비어있으므로 이 줄은 있어도/없어도 됩니다.
+import DiagnosisView from './game/scenes/DiagnosticScene'
 
 function App() {
-  // 지금은 진단 모드만 렌더링합니다.
-  // 추후 이 곳에서 진단 모드 <-> 게임 모드(Phaser) 전환 로직을 구현합니다.
+  // 불필요한 <div> 래퍼를 제거합니다.
+  // DiagnosisView 컴포넌트 자체가 전체 화면을 제어하도록 합니다.
   return (
-    <div className="App">
-      <DiagnosisView />
-    </div>
-  );
+    <DiagnosisView />
+  )
 }
 
-export default App;
+export default App
