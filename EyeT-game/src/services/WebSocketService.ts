@@ -4,17 +4,18 @@ import { io, Socket } from "socket.io-client";
 const SERVER_URL = "https://unhabitually-unsued-roseanne.ngrok-free.dev"; // 예: "https://abcdef123.ngrok-free.app"
 
 class WebSocketService {
-  // 1. (수정) socket을 public으로 변경하여 컴포넌트에서 접근 허용
+  // (수정) socket을 public으로 변경하여 컴포넌트에서 접근 허용
   public socket: Socket;
 
   constructor() {
     this.socket = io(SERVER_URL, {
-      transports: ["websocket"],
+      transports: ["websocket"], // WebSocket 우선 사용
     });
 
     this.setupListeners();
   }
 
+  // 기본 리스너 설정
   private setupListeners(): void {
     this.socket.on("connect", () => {
       console.log(`✅ WebSocket 연결 성공 (ID: ${this.socket.id})`);
@@ -27,17 +28,19 @@ class WebSocketService {
     this.socket.on("error", (error: string) => {
       console.error("WebSocket 오류:", error);
     });
-
-    // 2. (제거) 컴포넌트가 직접 리스닝하므로 서비스의 'results' 핸들러는 제거
-    // this.socket.on("results", (data: any) => { ... });
   }
 
+  /**
+   * Base64 인코딩된 이미지를 서버로 전송합니다.
+   * @param imageData (예: "data:image/jpeg;base64,...")
+   */
   public sendImage(imageData: string): void {
     if (this.socket && this.socket.connected) {
-      this.socket.emit("image", imageData);
+      this.socket.emit("image", imageData); // "image" 이벤트로 전송
     }
   }
 
+  // 연결 해제
   public disconnect(): void {
     if (this.socket) {
       this.socket.disconnect();
@@ -45,5 +48,6 @@ class WebSocketService {
   }
 }
 
+// 싱글톤 인스턴스 생성
 const webSocketService = new WebSocketService();
 export default webSocketService;
