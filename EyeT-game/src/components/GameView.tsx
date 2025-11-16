@@ -1,9 +1,19 @@
-// hodoon/eyet/EyeT-eaaf522f0858267e704c53039fcda85cb12ae3d5/EyeT-game/src/components/GameView.tsx
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import type { DiagnosisResult } from '../App';
 import { EyeGazeTracker } from '../game/EyeGazeTracker';
 import { ArcheryGameScene } from '../game/scenes/ArcheryGameScene';
+
+// 시선 민감도 (픽셀)
+const GAZE_SENSITIVITY = 1000; 
+
+// 얼굴 가이드라인 영역 (정규화된 좌표 0.0 ~ 1.0)
+const HEAD_SAFE_ZONE = {
+  xMin: 0.4,
+  xMax: 0.6,
+  yMin: 0.35,
+  yMax: 0.65,
+};
 
 // GameView가 받을 Props 정의
 interface GameViewProps {
@@ -12,13 +22,13 @@ interface GameViewProps {
 }
 
 const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
-  // Phaser 게임 인스턴스와 시선 추적기를 ref로 관리
   const phaserGameRef = useRef<Phaser.Game | null>(null);
   const gazeTrackerRef = useRef<EyeGazeTracker | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const animationFrameRef = useRef<number>(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  
+  const [isHeadInBounds, setIsHeadInBounds] = useState(true);
+  const gazeOffsetRef = useRef<{x: number, y: number}>({ x: 0.5, y: 0.5 }); 
 
-  // 컴포넌트 마운트 시 게임 및 시선 추적기 초기화
   useEffect(() => {
     if (!diagnosisResult) {
       console.error("GameView: 진단 결과가 없습니다. 진단 화면으로 돌아갑니다.");
@@ -26,113 +36,167 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
       return;
     }
 
-    let tracker: EyeGazeTracker;
-    let game: Phaser.Game;
+    let gameLoopInterval: number;
+    const initialDimensions = { width: window.innerWidth, height: window.innerHeight };
 
-    // 비동기 초기화 함수
     const initGame = async () => {
-      // 1. 숨겨진 비디오 요소 생성 및 웹캠 시작
-      const videoElement = document.createElement('video');
-      videoElement.autoplay = true;
-      videoElement.playsInline = true;
-      videoElement.style.display = 'none';
-      document.body.appendChild(videoElement);
+      if (!videoRef.current) {
+        console.error("비디오 Ref가 없습니다.");
+        return;
+      }
       
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      videoElement.srcObject = stream;
-      videoRef.current = videoElement;
+      const videoElement = videoRef.current;
 
-      // 2. 시선 추적기 초기화
-      tracker = new EyeGazeTracker();
+      try {
+        videoElement.srcObject = await navigator.mediaDevices.getUserMedia({ video: true });
+        videoElement.play();
+      } catch (err) {
+        console.error("웹캠을 시작할 수 없습니다:", err);
+        return;
+      }
+
+      const tracker = new EyeGazeTracker();
       await tracker.initialize();
       gazeTrackerRef.current = tracker;
       console.log("EyeGazeTracker 초기화 완료");
 
-      // 3. Phaser 게임 설정 (데이터를 변수로 관리)
-      const gameDimensions = { width: 1024, height: 768 };
-
       const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.AUTO,
-        width: gameDimensions.width,
-        height: gameDimensions.height,
+        width: initialDimensions.width,
+        height: initialDimensions.height,
         parent: 'phaser-game-container',
-        scene: [], // ✅ [수정] 씬을 비워두고 나중에 수동으로 추가
-        backgroundColor: '#f0f0f0',
+        scene: [],
+        backgroundColor: 'transparent',
         physics: {
           default: 'arcade',
-          arcade: {
-            debug: false,
-          },
+          arcade: { debug: false },
         },
       };
 
-      // 4. Phaser 게임 인스턴스 생성
-      game = new Phaser.Game(config);
+      const game = new Phaser.Game(config);
       phaserGameRef.current = game;
 
-      // 5. ✅ [수정] 씬을 수동으로 'add'하고 'start'하면서 init 데이터를 주입
       game.scene.add('ArcheryGameScene', ArcheryGameScene, true, {
         diagnosis: diagnosisResult,
-        dimensions: gameDimensions
+        dimensions: initialDimensions
       });
 
-      // 6. 매 프레임마다 시선 좌표를 React -> Phaser로 전달 (GazePoint는 Registry 사용)
-      const gameLoop = async () => {
-        if (tracker && game && videoElement) {
-          const normalizedPoint = await tracker.getGazePoint(videoElement);
+      gameLoopInterval = setInterval(async () => {
+        const currentTracker = gazeTrackerRef.current;
+        const currentGame = phaserGameRef.current;
+        const currentVideo = videoRef.current;
+        const offset = gazeOffsetRef.current;
+        const gameConfig = currentGame?.config;
+
+        if (currentTracker && currentGame && currentVideo && gameConfig) {
+          const trackingData = await currentTracker.getGazeAndHead(currentVideo);
           
-          if (normalizedPoint) {
-            const gazePoint = {
-              x: normalizedPoint.x * (config.width as number),
-              y: normalizedPoint.y * (config.height as number)
-            };
-            // 시선 좌표(gazePoint)는 매 프레임 업데이트되므로 registry를 계속 사용합니다.
-            game.registry.set('gazePoint', gazePoint);
+          if (trackingData) {
+            const { gaze, head } = trackingData;
+            const headX = 1.0 - head.x; 
+            const headY = head.y;
+            
+            const inBounds = 
+                 headX > HEAD_SAFE_ZONE.xMin && headX < HEAD_SAFE_ZONE.xMax &&
+                 headY > HEAD_SAFE_ZONE.yMin && headY < HEAD_SAFE_ZONE.yMax;
+            
+            setIsHeadInBounds(inBounds);
+
+            if (inBounds) {
+              const relativeX = (1.0 - gaze.x) - offset.x; 
+              const relativeY = gaze.y - offset.y;
+              const centerX = (gameConfig.width as number) / 2;
+              const centerY = (gameConfig.height as number) / 2;
+              const gazePoint = {
+                x: centerX + (relativeX * GAZE_SENSITIVITY),
+                y: centerY + (relativeY * GAZE_SENSITIVITY)
+              };
+              currentGame.registry.set('gazePoint', gazePoint);
+            }
+          } else {
+            setIsHeadInBounds(false);
           }
         }
-        animationFrameRef.current = requestAnimationFrame(gameLoop);
-      };
-      
-      gameLoop();
+      }, 100);
     };
 
     initGame();
 
-    // 컴포넌트 언마운트 시 모든 리소스 정리
+    const handleResize = () => {
+      if (phaserGameRef.current) {
+        phaserGameRef.current.scale.resize(window.innerWidth, window.innerHeight);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
     return () => {
-      cancelAnimationFrame(animationFrameRef.current);
+      clearInterval(gameLoopInterval);
+      window.removeEventListener('resize', handleResize);
       gazeTrackerRef.current?.close();
-      phaserGameRef.current?.destroy(true);
+      if (phaserGameRef.current) {
+        phaserGameRef.current.destroy(true);
+      }
+      
       if (videoRef.current && videoRef.current.srcObject) {
         (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-        videoRef.current.remove();
       }
       console.log("GameView: 게임 및 시선 추적기 리소스 정리 완료");
     };
-  }, [diagnosisResult, onReturn]);
+  }, [diagnosisResult, onReturn]); 
 
-  
-  // --- 렌더링 (UI) ---
-  // (기존 코드와 동일)
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
-      <h2 className="text-3xl font-bold mb-4">맞춤형 훈련 게임: 양궁</h2>
+    <div className="w-screen h-screen bg-gray-900 text-white relative">
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="absolute top-0 left-0 w-full h-full object-cover transform -scale-x-100 z-0"
+      />
+      <svg
+        className="absolute top-0 left-0 w-full h-full z-10 pointer-events-none"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <ellipse 
+          cx="50%"
+          cy="50%"
+          rx="10%"
+          ry="15%"
+          stroke={isHeadInBounds ? 'rgba(0, 255, 0, 0.7)' : 'rgba(255, 0, 0, 0.7)'}
+          strokeWidth="4"
+          strokeDasharray="10 5"
+        />
+        {!isHeadInBounds && (
+          <text 
+            x="50%" y="40%"
+            fill="white" 
+            fontSize="24" 
+            fontWeight="bold"
+            textAnchor="middle"
+            className="drop-shadow-md"
+          >
+            얼굴을 가이드라인 안으로 맞춰주세요
+          </text>
+        )}
+      </svg>
       
-      <p className="text-xl mb-6">
-        진단 결과: <span className="font-bold text-yellow-400">{diagnosisResult}</span> (훈련 시작)
-      </p>
+      <div 
+        id="phaser-game-container"
+        className="absolute top-0 left-0 w-full h-full z-20 transition-opacity duration-300"
+        style={{ opacity: isHeadInBounds ? 1 : 0.3 }}
+      />
 
-      <div id="phaser-game-container" 
-           className="w-full max-w-4xl h-[768px] bg-black rounded-lg shadow-lg mb-6"
-           style={{ width: '1024px', height: '768px' }}>
-        {/* Phaser가 여기에 캔버스를 삽입합니다. */}
-      </div>
+      <p className="absolute top-4 left-4 text-xl z-30 pointer-events-none">
+        진단 결과: <span className="font-bold text-yellow-400">{diagnosisResult}</span>
+      </p>
 
       <button
         onClick={onReturn}
-        className="px-6 py-3 text-lg font-bold text-white bg-blue-600 rounded-lg shadow-md
+        className="absolute top-4 right-4 px-6 py-3 text-lg font-bold text-white bg-blue-600 rounded-lg shadow-md
                    hover:bg-blue-700 focus:outline-none focus:ring-2 
-                   focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300"
+                   focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 z-30"
       >
         ← 진단 화면으로 돌아가기
       </button>
