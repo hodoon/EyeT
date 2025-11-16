@@ -1,5 +1,3 @@
-/* 1. (수정) Vite 기본 CSS를 모두 지우고
-      Tailwind CSS 기본 지시문으로 교체합니다. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
