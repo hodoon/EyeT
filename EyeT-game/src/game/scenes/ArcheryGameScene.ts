@@ -1,6 +1,6 @@
+// hodoon/eyet/EyeT-eaaf522f0858267e704c53039fcda85cb12ae3d5/EyeT-game/src/game/scenes/ArcheryGameScene.ts
 import Phaser from 'phaser';
 import type { DiagnosisResult } from '../../App'; // 진단 결과 타입
- // 진단 결과 타입
 
 // GDD 4. UI/UX 구조: 7초 (밀리초)
 const GAZE_CHARGE_DURATION = 7000;
@@ -11,7 +11,7 @@ export class ArcheryGameScene extends Phaser.Scene {
   private gameHeight: number = 0;
 
   // GDD 3. 게임 객체
-  private player!: Phaser.GameObjects.Graphics;
+  private player!: Phaser.GameObjects.Sprite; // ✅ [수정] Graphics -> Sprite
   private balloon!: Phaser.GameObjects.Graphics;
   private targetPicture!: Phaser.GameObjects.Graphics;
   private chargeGauge!: Phaser.GameObjects.Graphics;
@@ -30,19 +30,43 @@ export class ArcheryGameScene extends Phaser.Scene {
     super('ArcheryGameScene');
   }
 
+  // ✅ [추가] 에셋 로드
+  preload() {
+    // public/assets/archer_sheet.png 파일을 로드합니다.
+    // 프레임 크기는 960x960 이미지를 4x3으로 나눈 값입니다.
+    this.load.spritesheet('archer', 'assets/archer_sheet.png', {
+      frameWidth: 240,  // 960 / 4
+      frameHeight: 320 // 960 / 3
+    });
+    
+    // (추후 풍선, 화살 이미지도 여기에 추가)
+    // this.load.image('balloon', 'assets/balloon.png');
+    // this.load.image('arrow', 'assets/arrow.png');
+  }
+
   /**
-   * GameView.tsx로부터 진단 결과를 받음
+   * ✅ [수정] GameView.tsx로부터 데이터를 받도록 init 메서드 시그니처 변경
    */
-  init() {
-    this.diagnosisResult = this.registry.get('diagnosis');
-    this.gameWidth = this.registry.get('gameDimensions').width;
-    this.gameHeight = this.registry.get('gameDimensions').height;
+  init(data: { diagnosis: DiagnosisResult | null, dimensions: { width: number, height: number } }) {
+    this.diagnosisResult = data.diagnosis;
+
+    if (data.dimensions) {
+      this.gameWidth = data.dimensions.width;
+      this.gameHeight = data.dimensions.height;
+    } else {
+      console.error("ArcheryGameScene: init()에서 dimensions 데이터를 받지 못했습니다.");
+      // 데이터가 없는 경우를 대비한 기본값
+      this.gameWidth = 1024;
+      this.gameHeight = 768;
+    }
   }
 
   /**
    * Phaser 씬 생성
    */
   create() {
+    // ✅ [제거] 레지스트리에서 값을 읽어오던 코드 제거
+
     // 1. GDD 2. 치료 효과 설계
     // 진단 결과에 따라 플레이어, 풍선, 그림 위치 설정
     let playerX: number, pictureX: number;
@@ -69,21 +93,33 @@ export class ArcheryGameScene extends Phaser.Scene {
 
     // 2. GDD 4. 게임 객체 생성
     
-    // 플레이어 (활) - 'D' 모양으로 변경
-    this.player = this.add.graphics({ x: playerX, y: this.gameHeight / 2 });
-    this.player.lineStyle(5, 0x00ff00); // 초록색 활
-    this.player.beginPath();
-    this.player.arc(0, 0, 60, Phaser.Math.DegToRad(-90), Phaser.Math.DegToRad(90));
-    this.player.strokePath();
-    this.player.lineStyle(2, 0xffffff); // 흰색 시위
-    this.player.lineBetween(0, -60, 0, 60);
+    // ✅ [수정] 플레이어 (스프라이트)
+    this.player = this.add.sprite(playerX, this.gameHeight / 2, 'archer');
 
-    // GDD 3. 그림 캔버스
+    // ✅ [추가] 플레이어 애니메이션 생성
+    this.anims.create({
+      key: 'archer_aiming', // 애니메이션 이름
+      frames: this.anims.generateFrameNumbers('archer', { 
+        start: 0, // 0번 프레임부터
+        end: 10   // 10번 프레임까지 (총 11개 프레임)
+      }),
+      frameRate: 10,     // 초당 10 프레임
+      repeat: -1         // -1은 무한 반복
+    });
+
+    // ✅ [추가] 애니메이션 재생
+    this.player.anims.play('archer_aiming');
+    
+    // (크기가 너무 크면 주석 해제)
+    // this.player.setScale(0.5); 
+
+
+    // GDD 3. 그림 캔버스 (유지)
     this.targetPicture = this.add.graphics();
     this.targetPicture.fillStyle(0xeeeeee); // 회색 배경
     this.targetPicture.fillRect(pictureX - 100, this.gameHeight / 2 - 200, 200, 400);
 
-    // GDD 4. 충전 게이지
+    // GDD 4. 충전 게이지 (유지)
     this.chargeGauge = this.add.graphics({ x: this.gameWidth / 2 - 200, y: this.gameHeight - 60 });
     this.chargeText = this.add.text(this.gameWidth / 2, this.gameHeight - 80, '시선 고정 시간', {
       fontSize: '18px', color: '#000000' // 배경이 밝으므로 검은색
@@ -97,7 +133,7 @@ export class ArcheryGameScene extends Phaser.Scene {
   }
 
   /**
-   * GDD 3. 새 풍선 생성
+   * GDD 3. 새 풍선 생성 (유지)
    */
   spawnBalloon() {
     if (this.balloon) {
@@ -152,7 +188,7 @@ export class ArcheryGameScene extends Phaser.Scene {
   }
 
   /**
-   * GDD 4. 충전 게이지 UI 그리기
+   * GDD 4. 충전 게이지 UI 그리기 (유지)
    */
   updateChargeGauge() {
     this.chargeGauge.clear();
@@ -175,7 +211,7 @@ export class ArcheryGameScene extends Phaser.Scene {
   }
 
   /**
-   * GDD 3. 마우스 클릭 시 호출 (화살 발사)
+   * GDD 3. 마우스 클릭 시 호출 (화살 발사) (유지)
    */
   fireArrow() {
     // 7초 충전이 완료되었고, 아직 발사되지 않았을 때
@@ -208,7 +244,7 @@ export class ArcheryGameScene extends Phaser.Scene {
   }
 
   /**
-   * GDD 3. 풍선 명중 시
+   * GDD 3. 풍선 명중 시 (유지)
    */
   hitBalloon() {
     if (!this.balloon) return;
