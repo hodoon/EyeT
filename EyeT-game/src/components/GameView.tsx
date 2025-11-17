@@ -5,18 +5,15 @@ import { EyeGazeTracker } from '../game/EyeGazeTracker';
 import { ArcheryGameScene } from '../game/scenes/ArcheryGameScene';
 
 // 시선 민감도 (픽셀)
-const GAZE_SENSITIVITY = 1000; 
+const GAZE_SENSITIVITY = 3200; 
 
 const HEAD_SAFE_ZONE = {
-  // 🟢 [수정] X축 범위를 0.4 -> 0.3, 0.6 -> 0.7로 대폭 확장 (총 40% -> 70%)
   xMin: 0.3,
   xMax: 0.7,
-  // 🟢 [수정] Y축 범위를 0.35 -> 0.3, 0.65 -> 0.7로 대폭 확장 (총 30% -> 70%)
-  yMin: 0.3,
-  yMax: 0.7,
+  yMin: 0.25,
+  yMax: 0.75,
 };
 
-// GameView가 받을 Props 정의
 interface GameViewProps {
   diagnosisResult: DiagnosisResult | null;
   onReturn: () => void;
@@ -30,8 +27,6 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
   const [isHeadInBounds, setIsHeadInBounds] = useState(true);
   const gazeOffsetRef = useRef<{x: number, y: number}>({ x: 0.5, y: 0.5 }); 
 
-  
-  // 컴포넌트 마운트 시 게임 및 시선 추적기 초기화
   useEffect(() => {
     if (!diagnosisResult) {
       console.error("GameView: 진단 결과가 없습니다. 진단 화면으로 돌아갑니다.");
@@ -40,6 +35,10 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
     }
 
     let gameLoopInterval: number;
+    // 🟢 [수정 1] 중복 실행 방지를 위한 ignore 플래그 추가
+    let ignore = false;
+
+    console.log('🎮 GameView useEffect 시작');
 
     const initGame = async () => {
       if (!videoRef.current) {
@@ -50,8 +49,18 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
       const videoElement = videoRef.current;
 
       try {
-        videoElement.srcObject = await navigator.mediaDevices.getUserMedia({ video: true });
-        videoElement.play(); 
+        // 스트림이 없을 때만 요청
+        if (!videoElement.srcObject) {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            
+            // 🟢 [수정 2] 비동기 대기 후 언마운트 상태라면 중단
+            if (ignore) {
+                stream.getTracks().forEach(track => track.stop());
+                return;
+            }
+            videoElement.srcObject = stream;
+        }
+        await videoElement.play(); 
       } catch (err) {
         console.error("웹캠을 시작할 수 없습니다:", err);
         return;
@@ -59,9 +68,14 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
 
       const tracker = new EyeGazeTracker();
       await tracker.initialize();
+
+      // 🟢 [수정 3] 트래커 초기화 후에도 언마운트 체크
+      if (ignore) {
+          tracker.close();
+          return;
+      }
       gazeTrackerRef.current = tracker;
 
-      // ✅ [수정] 게임 해상도를 1280x768로 변경
       const gameDimensions = { width: 1280, height: 768 }; 
       const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.AUTO,
@@ -74,23 +88,37 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
           default: 'arcade',
           arcade: { debug: false },
         },
-
         scale: {
-            mode: Phaser.Scale.RESIZE, // 컨테이너 크기에 맞춰 크기 조정 허용
-            autoCenter: Phaser.Scale.CENTER_BOTH, // 캔버스 중앙 정렬
+            mode: Phaser.Scale.RESIZE,
+            autoCenter: Phaser.Scale.CENTER_BOTH,
         }
       };
+
+      // 🟢 [수정 4] 혹시 모를 기존 인스턴스 정리 (방어 코드)
+      if (phaserGameRef.current) {
+          phaserGameRef.current.destroy(true);
+          phaserGameRef.current = null;
+      }
 
       const game = new Phaser.Game(config);
       phaserGameRef.current = game;
 
-      game.scene.add('ArcheryGameScene', ArcheryGameScene, true, {
-        diagnosis: diagnosisResult,
-        dimensions: gameDimensions // 고정된 해상도 전달
-      });
+      // Registry 초기화
+      game.registry.remove('gazePoint');
+      game.registry.set('isGazeValid', false);
 
-      // 6. gameLoop를 setInterval로 실행 (성능 최적화)
+      if (!game.scene.getScene('ArcheryGameScene')) {
+        game.scene.add('ArcheryGameScene', ArcheryGameScene, true, {
+          diagnosis: diagnosisResult,
+          dimensions: gameDimensions
+        });
+        console.log('✅ ArcheryGameScene 생성 및 시작');
+      }
+
       gameLoopInterval = setInterval(async () => {
+        // 🟢 [수정 5] 루프 실행 시에도 언마운트 체크
+        if (ignore) return;
+
         const currentTracker = gazeTrackerRef.current;
         const currentGame = phaserGameRef.current;
         const currentVideo = videoRef.current;
@@ -103,7 +131,6 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
           if (trackingData) {
             const { gaze, head } = trackingData;
 
-            // --- 1. 머리 위치 확인 ---
             const headX = 1.0 - head.x; 
             const headY = head.y;
             
@@ -112,41 +139,39 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
                  headY > HEAD_SAFE_ZONE.yMin && headY < HEAD_SAFE_ZONE.yMax;
             
             setIsHeadInBounds(inBounds);
+            currentGame.registry.set('isGazeValid', inBounds);
 
-            // --- 2. 시선 좌표 계산 (머리가 범위 내에 있을 때만) ---
             if (inBounds) {
-              // 캘리브레이션 값(0.5)을 기준으로 상대 좌표 계산
               const relativeX = (1.0 - gaze.x) - offset.x; 
               const relativeY = (1.0 - gaze.y) - offset.y; 
 
               const centerX = (gameConfig.width as number) / 2;
               const centerY = (gameConfig.height as number) / 2;
 
-              // 최종 시선 좌표 (중앙 + 상대좌표 * 민감도)
               const gazePoint = {
                 x: centerX + (relativeX * GAZE_SENSITIVITY),
                 y: centerY + (relativeY * GAZE_SENSITIVITY)
               };
               
-              console.log(`🎯 Game Gaze Point: X=${gazePoint.x.toFixed(2)}, Y=${gazePoint.y.toFixed(2)}`); // 이 부분이 추가되었습니다.
-              
+              // console.log(`🎯 Game Gaze Point: X=${gazePoint.x.toFixed(2)}, Y=${gazePoint.y.toFixed(2)} | Valid=true`);
               currentGame.registry.set('gazePoint', gazePoint);
             } else {
-                 setIsHeadInBounds(false);
+              currentGame.registry.remove('gazePoint');
             }
 
           } else {
             setIsHeadInBounds(false);
+            currentGame.registry.set('isGazeValid', false);
+            currentGame.registry.remove('gazePoint');
           }
         }
-      }, 100); // 100ms (1초에 10번)
+      }, 100);
 
     };
 
     initGame();
 
     const handleResize = () => {
-      // Phaser 캔버스가 컨테이너 크기(1280x768)에 맞춰지도록 설정
       if (phaserGameRef.current) {
         phaserGameRef.current.scale.resize(1280, 768);
       }
@@ -155,13 +180,35 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
     window.addEventListener('load', handleResize);
 
     return () => {
+      // 🟢 [수정 6] Cleanup 함수 실행 시 ignore를 true로 설정하여 진행 중인 initGame 중단
+      ignore = true;
+      
+      console.log('🧹 GameView cleanup 시작');
       clearInterval(gameLoopInterval);
       window.removeEventListener('load', handleResize);
       window.removeEventListener('resize', handleResize);
-      gazeTrackerRef.current?.close();
+      
+      if (gazeTrackerRef.current) {
+        gazeTrackerRef.current.close();
+        gazeTrackerRef.current = null;
+      }
       
       if (phaserGameRef.current) {
+        try {
+          phaserGameRef.current.registry.destroy();
+        } catch (e) {
+          console.warn('Registry 파괴 중 오류:', e);
+        }
+        
+        // Scene 제거
+        const scene = phaserGameRef.current.scene.getScene('ArcheryGameScene');
+        if (scene) {
+          phaserGameRef.current.scene.remove('ArcheryGameScene');
+        }
+        
         phaserGameRef.current.destroy(true);
+        phaserGameRef.current = null;
+        console.log('🧹 Phaser Game 파괴됨');
       }
       
       if (videoRef.current && videoRef.current.srcObject) {
@@ -170,57 +217,46 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
     };
   }, [diagnosisResult, onReturn]); 
 
-  
-  // --- 렌더링 (UI) ---
   return (
-    // ✅ [수정] 전체 화면 div 대신, 고정된 크기의 중앙 컨테이너로 변경
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
       
-      {/* 1. 게임 타이틀 및 버튼 */}
       <h2 className="text-3xl font-bold mb-4 z-20">맞춤형 훈련 게임: 양궁</h2>
       <p className="text-xl mb-6 z-20">
         진단 결과: <span className="font-bold text-yellow-400">{diagnosisResult}</span> (훈련 시작)
       </p>
 
-      {/* 2. 게임 컨테이너 (비디오 + 가이드라인 + Phaser) */}
       <div 
         className="rounded-lg shadow-lg relative overflow-hidden bg-black"
-        // ✅ [수정] 고정된 게임 해상도 크기 적용 (1280px)
         style={{ width: '1280px', height: '768px' }}
       >
-        {/* 2-1. 비디오 배경 (항상 렌더링) */}
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          // ✅ [수정] 캔버스 크기에 맞게 채우도록 설정 (w-full h-full object-cover)
           className="absolute top-0 left-0 w-full h-full object-cover transform -scale-x-100 z-0" 
         />
 
-        {/* 2-2. 얼굴 가이드라인 (SVG 오버레이) */}
         <svg
           className="absolute top-0 left-0 w-full h-full z-10 pointer-events-none"
-          viewBox="0 0 1280 768" // ✅ [수정] viewBox를 캔버스 해상도에 맞춤 (1280px)
+          viewBox="0 0 1280 768"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          {/* 얼굴 타원형 가이드 (VIEWBOX 기준 좌표 사용) */}
           <ellipse 
-            cx="640" // 1280 / 2
-            cy="384" // 768 / 2
-            rx="145" // ⬅️ [수정] 가로 반지름을 줄입니다 (768px의 15% 사용)
-            ry="192" // ⬅️ [수정] 세로 반지름을 늘립니다 (1280px의 15% 사용)
+            cx="640" 
+            cy="384" 
+            rx="145"
+            ry="192"
             stroke={isHeadInBounds ? 'rgba(0, 255, 0, 0.7)' : 'rgba(255, 0, 0, 0.7)'}
-            strokeWidth="8" // 두껍게
+            strokeWidth="8"
             strokeDasharray="10 5"
           />
-          {/* 머리가 벗어났을 때 경고 메시지 */}
           {!isHeadInBounds && (
             <text 
-              x="640" y="300" // X좌표도 중앙에 맞춤
+              x="640" y="300"
               fill="white" 
-              fontSize="30" // 크게
+              fontSize="30" 
               fontWeight="bold"
               textAnchor="middle"
               className="drop-shadow-md"
@@ -230,7 +266,6 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
           )}
         </svg>
 
-        {/* 2-3. Phaser 게임 캔버스 */}
         <div 
           id="phaser-game-container"
           className="absolute top-0 left-0 w-full h-full z-20 transition-opacity duration-300"
@@ -245,7 +280,6 @@ const GameView: React.FC<GameViewProps> = ({ diagnosisResult, onReturn }) => {
         </span>
       </p>
 
-      {/* 3. 돌아가기 버튼 (게임 컨테이너 밖에 배치) */}
       <button
         onClick={onReturn}
         className="mt-4 px-6 py-3 text-lg font-bold text-white bg-blue-600 rounded-lg shadow-md
