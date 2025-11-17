@@ -82,12 +82,15 @@ export class ArcheryGameScene extends Phaser.Scene {
     let playerX: number;
 
     if (this.diagnosisResult === 'ESOTROPIA') {
+      // 내사시: 기존 유지 (플레이어 왼쪽, 풍선 오른쪽)
       playerX = 100;
-      this.balloonXRange = { min: this.gameWidth * 0.6, max: this.gameWidth * 0.9 };
+      this.balloonXRange = { min: this.gameWidth * 0.85, max: this.gameWidth * 0.95 };
     } 
     else if (this.diagnosisResult === 'EXOTROPIA') {
-      playerX = this.gameWidth - 100;
-      this.balloonXRange = { min: this.gameWidth * 0.1, max: this.gameWidth * 0.4 };
+      // 🟢 [수정] 외사시: 풍선을 오른쪽으로 배치
+      // 풍선이 오른쪽(0.6 ~ 0.9)에 나타나므로, 플레이어는 왼쪽(100)으로 이동합니다.
+      playerX = 100; 
+      this.balloonXRange = { min: this.gameWidth * 0.6, max: this.gameWidth * 0.9 };
     } 
     else {
       playerX = 100;

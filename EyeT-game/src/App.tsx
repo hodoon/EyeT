@@ -10,10 +10,10 @@ type AppView = 'diagnosis' | 'game';
 export type DiagnosisResult = "NORMAL" | "ESOTROPIA" | "EXOTROPIA" | "HYPERTROPIA" | "HYPOTROPIA";
 
 function App() {
-  // const [currentView, setCurrentView] = useState<AppView>('diagnosis');
-  // const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null);
-  const [currentView, setCurrentView] = useState<AppView>('game'); // 테스트용으로 기본값을 'game'으로 설정
-  const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>("ESOTROPIA"); // 테스트용으로 기본값 설정
+  const [currentView, setCurrentView] = useState<AppView>('diagnosis');
+  const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null);
+  // const [currentView, setCurrentView] = useState<AppView>('game'); // 테스트용으로 기본값을 'game'으로 설정
+  // const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>("ESOTROPIA"); // 테스트용으로 기본값 설정
 
   /**
    * DiagnosisView가 진단을 완료했을 때 호출하는 함수
