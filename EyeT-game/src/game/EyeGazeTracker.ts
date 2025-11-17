@@ -26,25 +26,20 @@ export class EyeGazeTracker {
   private faceLandmarker: FaceLandmarker | null = null;
   private lastVideoTime = -1;
 
-    public async initialize(): Promise<void> {
-      try {
-        console.log("EyeGazeTracker: Initializing...");
-        const filesetResolver = await FilesetResolver.forVisionTasks(MP_TASKS_URL);
-        this.faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-          baseOptions: {
-            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
-            delegate: "GPU",
-          },
-          outputFaceBlendshapes: false,
-          outputFacialTransformationMatrixes: false,
-          runningMode: "VIDEO",
-          numFaces: 1,
-        });
-        console.log("EyeGazeTracker: Initialization complete.", this.faceLandmarker);
-      } catch (error) {
-        console.error("EyeGazeTracker: Initialization failed!", error);
-      }
-    }
+  public async initialize(): Promise<void> {
+    const filesetResolver = await FilesetResolver.forVisionTasks(MP_TASKS_URL);
+    this.faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+      baseOptions: {
+        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+        delegate: "GPU",
+      },
+      outputFaceBlendshapes: false,
+      outputFacialTransformationMatrixes: false,
+      runningMode: "VIDEO",
+      numFaces: 1,
+    });
+  }
+
   private getAveragePosition(landmarks: NormalizedLandmark[], indexes: number[]): { x: number, y: number } {
     let totalX = 0;
     let totalY = 0;
@@ -72,7 +67,6 @@ export class EyeGazeTracker {
     this.lastVideoTime = videoTime;
 
     const results = this.faceLandmarker.detectForVideo(videoElement, performance.now());
-    console.log("MediaPipe results:", results); 
 
     if (results.faceLandmarks && results.faceLandmarks.length > 0) {
       const landmarks = results.faceLandmarks[0];
@@ -97,9 +91,12 @@ export class EyeGazeTracker {
         return null;
       }
 
-      const leftEyeRelativeX = (leftIrisCenter.x - leftEyeOuter.x) / leftEyeWidth;
+      // 좌안: Inner(최소 X)를 기준으로 계산
+      const leftEyeRelativeX = (leftIrisCenter.x - leftEyeInner.x) / leftEyeWidth; 
       const leftEyeRelativeY = (leftIrisCenter.y - leftEyeTop.y) / leftEyeHeight;
-      const rightEyeRelativeX = (rightIrisCenter.x - rightEyeOuter.x) / rightEyeWidth;
+      
+      // 우안: Inner(최소 X)를 기준으로 계산
+      const rightEyeRelativeX = (rightIrisCenter.x - rightEyeInner.x) / rightEyeWidth; 
       const rightEyeRelativeY = (rightIrisCenter.y - rightEyeTop.y) / rightEyeHeight;
       
       const avgX = (leftEyeRelativeX + rightEyeRelativeX) / 2;
@@ -107,6 +104,9 @@ export class EyeGazeTracker {
       
       const gazeX = Math.max(0, Math.min(1, avgX));
       const gazeY = Math.max(0, Math.min(1, avgY));
+
+      // ✅ [추가된 로그] 실시간 동공 추적 로그
+      console.log(`👁️ Gaze Tracked: X=${gazeX.toFixed(4)}, Y=${gazeY.toFixed(4)}`);
 
       // --- 2. 머리(head) 위치 계산 ---
       const headCenter = landmarks[NOSE_TIP_INDEX]; // 코 끝을 얼굴 중심으로 사용

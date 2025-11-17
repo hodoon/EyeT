@@ -3,6 +3,9 @@ import type { DiagnosisResult } from '../../App'; // 진단 결과 타입
 
 const GAZE_CHARGE_DURATION = 7000;
 
+// 트래커 안정화를 위한 최소 이동 거리 (8 픽셀의 제곱: 64)
+const MIN_MOVEMENT_SQUARED = 4 * 4; 
+
 export class ArcheryGameScene extends Phaser.Scene {
   private diagnosisResult: DiagnosisResult | null = null;
   private gameWidth: number = 0;
@@ -11,13 +14,12 @@ export class ArcheryGameScene extends Phaser.Scene {
   // 게임 객체들
   private player!: Phaser.GameObjects.Sprite;
   private balloon!: Phaser.GameObjects.Sprite;
-  // private targetPicture!: Phaser.GameObjects.Graphics; // ❌ [삭제] 그림 캔버스 선언
   private chargeGauge!: Phaser.GameObjects.Graphics;
   private chargeText!: Phaser.GameObjects.Text;
   private eyeGazeIndicator!: Phaser.GameObjects.Graphics;
 
   // GazeHoldGauge 시스템
-  private gazePoint: { x: number, y: number } = { x: 0, y: 0 };
+  private gazePoint: { x: number, y: number } = { x: 0, y: 0 }; 
   private chargeAmount: number = 0;
   private isGazing: boolean = false;
   private isFired: boolean = false;
@@ -50,6 +52,8 @@ export class ArcheryGameScene extends Phaser.Scene {
       this.gameWidth = 1024;
       this.gameHeight = 768;
     }
+    // 🟢 [수정] init 단계에서 gazePoint 초기값 설정 (가장 안정적)
+    this.gazePoint = { x: this.gameWidth / 2, y: this.gameHeight / 2 }; 
   }
 
   create() {
@@ -77,17 +81,14 @@ export class ArcheryGameScene extends Phaser.Scene {
     if (this.diagnosisResult === 'ESOTROPIA') {
       playerX = 100;
       this.balloonXRange = { min: this.gameWidth * 0.6, max: this.gameWidth * 0.9 };
-      // pictureX = this.gameWidth - 150; // ❌ [삭제]
     } 
     else if (this.diagnosisResult === 'EXOTROPIA') {
       playerX = this.gameWidth - 100;
       this.balloonXRange = { min: this.gameWidth * 0.1, max: this.gameWidth * 0.4 };
-      // pictureX = 150; // ❌ [삭제]
     } 
     else {
       playerX = 100;
       this.balloonXRange = { min: this.gameWidth * 0.6, max: this.gameWidth * 0.9 };
-      // pictureX = this.gameWidth - 150; // ❌ [삭제]
     }
 
     // 2. GDD 4. 게임 객체 생성
@@ -102,10 +103,6 @@ export class ArcheryGameScene extends Phaser.Scene {
     this.player.anims.play('archer_aiming');
     this.player.setScale(3);
 
-    // this.targetPicture = this.add.graphics(); // ❌ [삭제] 그림 캔버스 생성
-    // this.targetPicture.fillStyle(0xeeeeee);   // ❌ [삭제]
-    // this.targetPicture.fillRect(pictureX - 100, this.gameHeight / 2 - 200, 200, 400); // ❌ [삭제]
-
     this.chargeGauge = this.add.graphics({ x: this.gameWidth / 2 - 200, y: this.gameHeight - 60 });
     this.chargeText = this.add.text(this.gameWidth / 2, this.gameHeight - 80, '시선 고정 시간', {
       fontSize: '18px', color: '#FFFFFF'
@@ -119,9 +116,7 @@ export class ArcheryGameScene extends Phaser.Scene {
 
     // 시선 표시기 생성
     this.eyeGazeIndicator = this.add.graphics({ x: 0, y: 0 });
-    this.eyeGazeIndicator.fillStyle(0xff0000, 0.7);
-    this.eyeGazeIndicator.fillCircle(0, 0, 10);
-    this.eyeGazeIndicator.setDepth(100);
+    this.eyeGazeIndicator.setDepth(9999);
   }
 
   /**
@@ -147,21 +142,40 @@ export class ArcheryGameScene extends Phaser.Scene {
   /**
    * 매 프레임마다 실행
    */
+  // ArcheryGameScene.ts update
   update(time: number, delta: number) {
-    // 1. React(MediaPipe)로부터 시선 좌표 받기
-    this.gazePoint = this.registry.get('gazePoint') || { x: 0, y: 0 };
-    if (!this.balloon || this.isFired) return;
+    const newGazePoint = this.registry.get('gazePoint') || { x: 0, y: 0 }; 
+    
+    // 1. 유효성 검사: newGazePoint가 유효할 때만 Dead Zone 체크 및 갱신 수행
+    if (newGazePoint.x !== 0 || newGazePoint.y !== 0) {
+        
+        // 2. 🟢 [안정화 로직] 데드 존 체크
+        const dx = newGazePoint.x - this.gazePoint.x;
+        const dy = newGazePoint.y - this.gazePoint.y;
+        const distanceSquared = dx * dx + dy * dy;
 
-    // 시선 표시기 위치 업데이트
-    if (this.gazePoint.x !== 0 || this.gazePoint.y !== 0) {
-      this.eyeGazeIndicator.x = this.gazePoint.x;
-      this.eyeGazeIndicator.y = this.gazePoint.y;
-      this.eyeGazeIndicator.setVisible(true);
-    } else {
-      this.eyeGazeIndicator.setVisible(false);
+        // 3. 충분히 움직였을 때만 this.gazePoint 업데이트
+        if (distanceSquared > MIN_MOVEMENT_SQUARED) {
+             this.gazePoint = newGazePoint; // 유효하고 충분한 움직임만 적용
+        } 
+        // else: 움직임이 작을 경우 this.gazePoint는 이전 유효값 유지
     }
 
-    // 2. GDD 3. 시선이 풍선 위에 있는지 확인
+    // 🟢 [로그] 안정화된 최종 gazePoint 로그 (이 로그를 통해 튕김 현상이 사라졌는지 확인)
+    console.log(`🔥 Stabilized GazePoint: ${this.gazePoint.x.toFixed(2)}, ${this.gazePoint.y.toFixed(2)}`);
+
+    // eyeGazeIndicator 업데이트
+    this.eyeGazeIndicator.x = this.gazePoint.x;
+    this.eyeGazeIndicator.y = this.gazePoint.y;
+    
+    // 🟢 [렌더링] 일반적인 빨간색 트래커로 복구
+    this.eyeGazeIndicator.clear();
+    this.eyeGazeIndicator.fillStyle(0xff0000, 0.7); 
+    this.eyeGazeIndicator.fillCircle(0, 0, 10); 
+    this.eyeGazeIndicator.setVisible(true); 
+
+    if (!this.balloon || this.isFired) return;
+
     const balloonRadius = this.balloon.getData('radius');
     const distance = Phaser.Math.Distance.Between(
       this.gazePoint.x, this.gazePoint.y,
@@ -169,18 +183,15 @@ export class ArcheryGameScene extends Phaser.Scene {
     );
     this.isGazing = distance < balloonRadius * 1.5;
 
-    // 3. GDD 3. 시선 충전 로직
     if (this.isGazing && this.chargeAmount < GAZE_CHARGE_DURATION) {
       this.chargeAmount += delta;
       if (this.chargeAmount > GAZE_CHARGE_DURATION) {
         this.chargeAmount = GAZE_CHARGE_DURATION;
       }
-    } 
-    else if (!this.isGazing) {
+    } else if (!this.isGazing) {
       this.chargeAmount = 0;
     }
 
-    // 4. 충전 게이지 UI 업데이트
     this.updateChargeGauge();
   }
 
