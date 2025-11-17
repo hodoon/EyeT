@@ -1,30 +1,28 @@
 import Phaser from 'phaser';
-import type { DiagnosisResult } from '../../App'; // 진단 결과 타입
+import type { DiagnosisResult } from '../../App';
 
 const GAZE_CHARGE_DURATION = 7000;
-
-// 트래커 안정화를 위한 최소 이동 거리 (8 픽셀의 제곱: 64)
-const MIN_MOVEMENT_SQUARED = 4 * 4; 
+const MIN_MOVEMENT_SQUARED = 4 * 4;
 
 export class ArcheryGameScene extends Phaser.Scene {
   private diagnosisResult: DiagnosisResult | null = null;
   private gameWidth: number = 0;
   private gameHeight: number = 0;
 
-  // 게임 객체들
   private player!: Phaser.GameObjects.Sprite;
   private balloon!: Phaser.GameObjects.Sprite;
   private chargeGauge!: Phaser.GameObjects.Graphics;
   private chargeText!: Phaser.GameObjects.Text;
   private eyeGazeIndicator!: Phaser.GameObjects.Graphics;
 
-  // GazeHoldGauge 시스템
-  private gazePoint: { x: number, y: number } = { x: 0, y: 0 }; 
+  private gazePoint: { x: number, y: number } = { x: 0, y: 0 };
+  private smoothedGazePoint: { x: number, y: number } = { x: 0, y: 0 };
   private chargeAmount: number = 0;
   private isGazing: boolean = false;
   private isFired: boolean = false;
   
-  // 풍선 위치 범위
+  private readonly SMOOTHING_FACTOR = 0.3;
+  
   private balloonXRange: { min: number, max: number } = { min: 0, max: 0 };
 
   constructor() {
@@ -42,6 +40,7 @@ export class ArcheryGameScene extends Phaser.Scene {
   }
 
   init(data: { diagnosis: DiagnosisResult | null, dimensions: { width: number, height: number } }) {
+    console.log('🎮 ArcheryGameScene.init() 호출됨');
     this.diagnosisResult = data.diagnosis;
 
     if (data.dimensions) {
@@ -52,12 +51,18 @@ export class ArcheryGameScene extends Phaser.Scene {
       this.gameWidth = 1024;
       this.gameHeight = 768;
     }
-    // 🟢 [수정] init 단계에서 gazePoint 초기값 설정 (가장 안정적)
-    this.gazePoint = { x: this.gameWidth / 2, y: this.gameHeight / 2 }; 
+    
+    this.gazePoint = { x: this.gameWidth / 2, y: this.gameHeight / 2 };
+    this.smoothedGazePoint = { x: this.gameWidth / 2, y: this.gameHeight / 2 };
+    
+    console.log(`🎮 Scene 초기화: 중앙 좌표 (${this.gazePoint.x}, ${this.gazePoint.y})`);
+    
+    // ✅ Registry 초기화
+    this.registry.remove('gazePoint');
+    this.registry.set('isGazeValid', false);
   }
 
   create() {
-    // 배경 타일링 (새로운 방식)
     const backgroundTileTexture = this.textures.get('background');
     if (!backgroundTileTexture.key) {
         console.error("Background tile texture not found!");
@@ -66,7 +71,6 @@ export class ArcheryGameScene extends Phaser.Scene {
     
     const tileWidth = backgroundTileTexture.source[0].width;
     const tileHeight = backgroundTileTexture.source[0].height;
-
     const numTiles = Math.ceil(this.gameWidth / tileWidth);
 
     for (let i = 0; i < numTiles + 1; i++) {
@@ -75,8 +79,7 @@ export class ArcheryGameScene extends Phaser.Scene {
             .setScrollFactor(0);
     }
 
-    // 1. GDD 2. 치료 효과 설계
-    let playerX: number; // pictureX는 더 이상 필요 없음
+    let playerX: number;
 
     if (this.diagnosisResult === 'ESOTROPIA') {
       playerX = 100;
@@ -91,9 +94,7 @@ export class ArcheryGameScene extends Phaser.Scene {
       this.balloonXRange = { min: this.gameWidth * 0.6, max: this.gameWidth * 0.9 };
     }
 
-    // 2. GDD 4. 게임 객체 생성
-    
-    this.player = this.add.sprite(playerX, this.gameHeight - 120, 'archer'); // ✅ 궁수 위치 수정
+    this.player = this.add.sprite(playerX, this.gameHeight - 120, 'archer');
     this.anims.create({
       key: 'archer_aiming',
       frames: this.anims.generateFrameNumbers('archer', { start: 0, end: 63 }),
@@ -108,20 +109,14 @@ export class ArcheryGameScene extends Phaser.Scene {
       fontSize: '18px', color: '#FFFFFF'
     }).setOrigin(0.5);
 
-    // 3. 풍선 생성
     this.spawnBalloon();
 
-    // 4. GDD 3. 마우스 클릭 이벤트 리스너 등록
     this.input.on('pointerdown', this.fireArrow, this);
 
-    // 시선 표시기 생성
     this.eyeGazeIndicator = this.add.graphics({ x: 0, y: 0 });
     this.eyeGazeIndicator.setDepth(9999);
   }
 
-  /**
-   * 새 풍선 생성
-   */
   spawnBalloon() {
     if (this.balloon) {
       this.balloon.destroy();
@@ -129,46 +124,43 @@ export class ArcheryGameScene extends Phaser.Scene {
     
     const x = Phaser.Math.Between(this.balloonXRange.min, this.balloonXRange.max);
     const y = Phaser.Math.Between(this.gameHeight * 0.2, this.gameHeight * 0.8);
-    
     const color = Phaser.Display.Color.RandomRGB(100, 255).color;
 
     this.balloon = this.add.sprite(x, y, 'balloon');
-    this.balloon.setScale(0.2); // ✅ 풍선 크기 수정
-
+    this.balloon.setScale(0.2);
     this.balloon.setData('radius', (this.balloon.width * this.balloon.scaleX) / 2);
     this.balloon.setData('color', color);
+    
+    console.log(`🎈 풍선 생성: (${x.toFixed(0)}, ${y.toFixed(0)})`);
   }
 
-  /**
-   * 매 프레임마다 실행
-   */
-  // ArcheryGameScene.ts update
   update(time: number, delta: number) {
-    const newGazePoint = this.registry.get('gazePoint') || { x: 0, y: 0 }; 
+    const newGazePoint = this.registry.get('gazePoint');
+    const isGazeValid = this.registry.get('isGazeValid');
     
-    // 1. 유효성 검사: newGazePoint가 유효할 때만 Dead Zone 체크 및 갱신 수행
-    if (newGazePoint.x !== 0 || newGazePoint.y !== 0) {
-        
-        // 2. 🟢 [안정화 로직] 데드 존 체크
-        const dx = newGazePoint.x - this.gazePoint.x;
-        const dy = newGazePoint.y - this.gazePoint.y;
-        const distanceSquared = dx * dx + dy * dy;
-
-        // 3. 충분히 움직였을 때만 this.gazePoint 업데이트
-        if (distanceSquared > MIN_MOVEMENT_SQUARED) {
-             this.gazePoint = newGazePoint; // 유효하고 충분한 움직임만 적용
-        } 
-        // else: 움직임이 작을 경우 this.gazePoint는 이전 유효값 유지
+    // 🔍 디버그: Registry 상태 확인
+    if (newGazePoint) {
+      console.log(`📦 Registry: gazePoint=(${newGazePoint.x?.toFixed(1)}, ${newGazePoint.y?.toFixed(1)}), valid=${isGazeValid}`);
     }
-
-    // 🟢 [로그] 안정화된 최종 gazePoint 로그 (이 로그를 통해 튕김 현상이 사라졌는지 확인)
-    console.log(`🔥 Stabilized GazePoint: ${this.gazePoint.x.toFixed(2)}, ${this.gazePoint.y.toFixed(2)}`);
-
-    // eyeGazeIndicator 업데이트
-    this.eyeGazeIndicator.x = this.gazePoint.x;
-    this.eyeGazeIndicator.y = this.gazePoint.y;
     
-    // 🟢 [렌더링] 일반적인 빨간색 트래커로 복구
+    // ✅ 시선이 유효하고 새 데이터가 있을 때만 업데이트
+    if (isGazeValid === true && newGazePoint && 
+        typeof newGazePoint.x === 'number' && 
+        typeof newGazePoint.y === 'number') {
+        
+        this.gazePoint.x = newGazePoint.x;
+        this.gazePoint.y = newGazePoint.y;
+        
+        this.smoothedGazePoint.x += (this.gazePoint.x - this.smoothedGazePoint.x) * this.SMOOTHING_FACTOR;
+        this.smoothedGazePoint.y += (this.gazePoint.y - this.smoothedGazePoint.y) * this.SMOOTHING_FACTOR;
+        
+        console.log(`✅ Valid | Raw: (${this.gazePoint.x.toFixed(1)}, ${this.gazePoint.y.toFixed(1)}) → Smoothed: (${this.smoothedGazePoint.x.toFixed(1)}, ${this.smoothedGazePoint.y.toFixed(1)})`);
+    }
+    // 시선이 유효하지 않을 때는 이전 smoothed 값 유지 (로그 없음)
+
+    this.eyeGazeIndicator.x = this.smoothedGazePoint.x;
+    this.eyeGazeIndicator.y = this.smoothedGazePoint.y;
+    
     this.eyeGazeIndicator.clear();
     this.eyeGazeIndicator.fillStyle(0xff0000, 0.7); 
     this.eyeGazeIndicator.fillCircle(0, 0, 10); 
@@ -178,7 +170,7 @@ export class ArcheryGameScene extends Phaser.Scene {
 
     const balloonRadius = this.balloon.getData('radius');
     const distance = Phaser.Math.Distance.Between(
-      this.gazePoint.x, this.gazePoint.y,
+      this.smoothedGazePoint.x, this.smoothedGazePoint.y,
       this.balloon.x, this.balloon.y
     );
     this.isGazing = distance < balloonRadius * 1.5;
@@ -195,9 +187,6 @@ export class ArcheryGameScene extends Phaser.Scene {
     this.updateChargeGauge();
   }
 
-  /**
-   * 충전 게이지 UI 그리기
-   */
   updateChargeGauge() {
     this.chargeGauge.clear();
     
@@ -215,9 +204,6 @@ export class ArcheryGameScene extends Phaser.Scene {
     this.chargeGauge.fillRect(0, 0, chargeWidth, 30);
   }
 
-  /**
-   * 마우스 클릭 시 호출 (화살 발사)
-   */
   fireArrow() {
     if (this.chargeAmount >= GAZE_CHARGE_DURATION && !this.isFired && this.player && this.balloon) {
       this.isFired = true;
@@ -245,9 +231,6 @@ export class ArcheryGameScene extends Phaser.Scene {
     }
   }
 
-  /**
-   * 풍선 명중 시
-   */
   hitBalloon() {
     if (!this.balloon) return;
 
@@ -257,9 +240,8 @@ export class ArcheryGameScene extends Phaser.Scene {
       alpha: 0,
       duration: 100,
       onComplete: () => {
-        this.spawnBalloon(); // 새 풍선 생성
+        this.spawnBalloon();
       }
     });
-
   }
 }
