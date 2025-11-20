@@ -1,13 +1,11 @@
-import { 
-  FaceLandmarker, 
+import {
+  FaceLandmarker,
   FilesetResolver,
   type NormalizedLandmark
 } from "@mediapipe/tasks-vision";
 
-// MediaPipe 모델 경로 (CDN)
 const MP_TASKS_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm";
 
-// --- 눈동자 및 눈 경계 랜드마크 인덱스 ---
 const IRIS_LEFT_INDEXES = [474, 475, 476, 477];
 const EYE_LEFT_OUTER_CORNER = 263;
 const EYE_LEFT_INNER_CORNER = 362;
@@ -19,16 +17,14 @@ const EYE_RIGHT_INNER_CORNER = 33;
 const EYE_RIGHT_TOP_LID = 159;
 const EYE_RIGHT_BOTTOM_LID = 145;
 
-// --- ✅ [추가] 얼굴 중심 (코 끝) ---
 const NOSE_TIP_INDEX = 1;
 
 export class EyeGazeTracker {
   private faceLandmarker: FaceLandmarker | null = null;
   private lastVideoTime = -1;
-  // ✅ [추가] 마지막으로 유효했던 시선/머리 데이터와 감지 실패 프레임 카운터
   private lastGoodGazeAndHead: { gaze: { x: number, y: number }, head: { x: number, y: number } } | null = null;
   private framesSinceLastDetection = 0;
-  private readonly DETECTION_LOSS_THRESHOLD = 10; // 10프레임 동안 감지 안되면 유실로 판단
+  private readonly DETECTION_LOSS_THRESHOLD = 10;
 
   public async initialize(): Promise<void> {
     const filesetResolver = await FilesetResolver.forVisionTasks(MP_TASKS_URL);
@@ -54,11 +50,6 @@ export class EyeGazeTracker {
     return { x: totalX / indexes.length, y: totalY / indexes.length };
   }
 
-  /**
-   * ✅ [수정] 반환 타입을 gaze와 head로 변경하고, 인식 실패 시 데이터 유지 로직 추가
-   * @param videoElement 
-   * @returns {Promise<{ gaze: { x, y }, head: { x, y } } | null>}
-   */
   public async getGazeAndHead(videoElement: HTMLVideoElement): Promise<{ gaze: { x: number, y: number }, head: { x: number, y: number } } | null> {
     if (!this.faceLandmarker || videoElement.readyState < 2) {
       return null;
@@ -66,7 +57,6 @@ export class EyeGazeTracker {
 
     const videoTime = videoElement.currentTime;
     if (this.lastVideoTime === videoTime) {
-      // ✅ [수정] 같은 프레임이면 마지막 유효 데이터 반환
       return this.lastGoodGazeAndHead;
     }
     this.lastVideoTime = videoTime;
@@ -74,11 +64,9 @@ export class EyeGazeTracker {
     const results = this.faceLandmarker.detectForVideo(videoElement, performance.now());
 
     if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-      // ✅ [추가] 얼굴 감지 성공
       this.framesSinceLastDetection = 0;
       const landmarks = results.faceLandmarks[0];
 
-      // --- 1. 시선(gaze) 계산 (이전과 동일) ---
       const leftIrisCenter = this.getAveragePosition(landmarks, IRIS_LEFT_INDEXES);
       const rightIrisCenter = this.getAveragePosition(landmarks, IRIS_RIGHT_INDEXES);
       const leftEyeOuter = landmarks[EYE_LEFT_OUTER_CORNER];
@@ -95,47 +83,38 @@ export class EyeGazeTracker {
       const rightEyeHeight = Math.abs(rightEyeBottom.y - rightEyeTop.y);
 
       if (leftEyeWidth <= 0 || leftEyeHeight <= 0 || rightEyeWidth <= 0 || rightEyeHeight <= 0) {
-        // ✅ [수정] 눈 크기 계산 실패 시 마지막 유효 데이터 반환 시도
         if (this.framesSinceLastDetection < this.DETECTION_LOSS_THRESHOLD) {
           return this.lastGoodGazeAndHead;
         }
         return null;
       }
 
-      // 좌안: Inner(최소 X)를 기준으로 계산
-      const leftEyeRelativeX = (leftIrisCenter.x - leftEyeInner.x) / leftEyeWidth; 
+      const leftEyeRelativeX = (leftIrisCenter.x - leftEyeInner.x) / leftEyeWidth;
       const leftEyeRelativeY = (leftIrisCenter.y - leftEyeTop.y) / leftEyeHeight;
-      
-      // 우안: Inner(최소 X)를 기준으로 계산
-      const rightEyeRelativeX = (rightIrisCenter.x - rightEyeInner.x) / rightEyeWidth; 
+
+      const rightEyeRelativeX = (rightIrisCenter.x - rightEyeInner.x) / rightEyeWidth;
       const rightEyeRelativeY = (rightIrisCenter.y - rightEyeTop.y) / rightEyeHeight;
-      
+
       const avgX = (leftEyeRelativeX + rightEyeRelativeX) / 2;
       const avgY = (leftEyeRelativeY + rightEyeRelativeY) / 2;
-      
+
       const gazeX = Math.max(0, Math.min(1, avgX));
       const gazeY = Math.max(0, Math.min(1, avgY));
 
-      // ✅ [추가된 로그] 실시간 동공 추적 로그
       console.log(`👁️ Gaze Tracked: X=${gazeX.toFixed(4)}, Y=${gazeY.toFixed(4)}`);
 
-      // --- 2. 머리(head) 위치 계산 ---
-      const headCenter = landmarks[NOSE_TIP_INDEX]; // 코 끝을 얼굴 중심으로 사용
+      const headCenter = landmarks[NOSE_TIP_INDEX];
 
-      // ✅ [추가] 마지막 유효 데이터 업데이트
-      this.lastGoodGazeAndHead = { 
-        gaze: { x: gazeX, y: gazeY }, 
+      this.lastGoodGazeAndHead = {
+        gaze: { x: gazeX, y: gazeY },
         head: { x: headCenter.x, y: headCenter.y }
       };
       return this.lastGoodGazeAndHead;
     } else {
-      // ✅ [추가] 얼굴 감지 실패
       this.framesSinceLastDetection++;
       if (this.framesSinceLastDetection < this.DETECTION_LOSS_THRESHOLD && this.lastGoodGazeAndHead) {
-        // 임계값 미만이면 마지막 유효 데이터 반환
         return this.lastGoodGazeAndHead;
       } else {
-        // 임계값 초과 시 데이터 유실 처리
         this.lastGoodGazeAndHead = null;
         return null;
       }
