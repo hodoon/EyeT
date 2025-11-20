@@ -20,9 +20,9 @@ export class ArcheryGameScene extends Phaser.Scene {
   private chargeAmount: number = 0;
   private isGazing: boolean = false;
   private isFired: boolean = false;
-  
+
   private readonly SMOOTHING_FACTOR = 0.3;
-  
+
   private balloonXRange: { min: number, max: number } = { min: 0, max: 0 };
 
   constructor() {
@@ -51,13 +51,12 @@ export class ArcheryGameScene extends Phaser.Scene {
       this.gameWidth = 1024;
       this.gameHeight = 768;
     }
-    
+
     this.gazePoint = { x: this.gameWidth / 2, y: this.gameHeight / 2 };
     this.smoothedGazePoint = { x: this.gameWidth / 2, y: this.gameHeight / 2 };
-    
+
     console.log(`🎮 Scene 초기화: 중앙 좌표 (${this.gazePoint.x}, ${this.gazePoint.y})`);
-    
-    // ✅ Registry 초기화
+
     this.registry.remove('gazePoint');
     this.registry.set('isGazeValid', false);
   }
@@ -65,33 +64,30 @@ export class ArcheryGameScene extends Phaser.Scene {
   create() {
     const backgroundTileTexture = this.textures.get('background');
     if (!backgroundTileTexture.key) {
-        console.error("Background tile texture not found!");
-        return; 
+      console.error("Background tile texture not found!");
+      return;
     }
-    
+
     const tileWidth = backgroundTileTexture.source[0].width;
     const tileHeight = backgroundTileTexture.source[0].height;
     const numTiles = Math.ceil(this.gameWidth / tileWidth);
 
     for (let i = 0; i < numTiles + 1; i++) {
-        this.add.image(i * tileWidth + tileWidth / 2, this.gameHeight / 2, 'background')
-            .setOrigin(0.5, 0.5)
-            .setScrollFactor(0);
+      this.add.image(i * tileWidth + tileWidth / 2, this.gameHeight / 2, 'background')
+        .setOrigin(0.5, 0.5)
+        .setScrollFactor(0);
     }
 
     let playerX: number;
 
     if (this.diagnosisResult === 'ESOTROPIA') {
-      // 내사시: 기존 유지 (플레이어 왼쪽, 풍선 오른쪽)
       playerX = 100;
       this.balloonXRange = { min: this.gameWidth * 0.85, max: this.gameWidth * 0.95 };
-    } 
+    }
     else if (this.diagnosisResult === 'EXOTROPIA') {
-      // 🟢 [수정] 외사시: 풍선을 오른쪽으로 배치
-      // 풍선이 오른쪽(0.6 ~ 0.9)에 나타나므로, 플레이어는 왼쪽(100)으로 이동합니다.
-      playerX = 100; 
+      playerX = 100;
       this.balloonXRange = { min: this.gameWidth * 0.6, max: this.gameWidth * 0.9 };
-    } 
+    }
     else {
       playerX = 100;
       this.balloonXRange = { min: this.gameWidth * 0.6, max: this.gameWidth * 0.9 };
@@ -124,7 +120,7 @@ export class ArcheryGameScene extends Phaser.Scene {
     if (this.balloon) {
       this.balloon.destroy();
     }
-    
+
     const x = Phaser.Math.Between(this.balloonXRange.min, this.balloonXRange.max);
     const y = Phaser.Math.Between(this.gameHeight * 0.2, this.gameHeight * 0.8);
     const color = Phaser.Display.Color.RandomRGB(100, 255).color;
@@ -133,41 +129,38 @@ export class ArcheryGameScene extends Phaser.Scene {
     this.balloon.setScale(0.2);
     this.balloon.setData('radius', (this.balloon.width * this.balloon.scaleX) / 2);
     this.balloon.setData('color', color);
-    
+
     console.log(`🎈 풍선 생성: (${x.toFixed(0)}, ${y.toFixed(0)})`);
   }
 
   update(time: number, delta: number) {
     const newGazePoint = this.registry.get('gazePoint');
     const isGazeValid = this.registry.get('isGazeValid');
-    
-    // 🔍 디버그: Registry 상태 확인
+
     if (newGazePoint) {
       console.log(`📦 Registry: gazePoint=(${newGazePoint.x?.toFixed(1)}, ${newGazePoint.y?.toFixed(1)}), valid=${isGazeValid}`);
     }
-    
-    // ✅ 시선이 유효하고 새 데이터가 있을 때만 업데이트
-    if (isGazeValid === true && newGazePoint && 
-        typeof newGazePoint.x === 'number' && 
-        typeof newGazePoint.y === 'number') {
-        
-        this.gazePoint.x = newGazePoint.x;
-        this.gazePoint.y = newGazePoint.y;
-        
-        this.smoothedGazePoint.x += (this.gazePoint.x - this.smoothedGazePoint.x) * this.SMOOTHING_FACTOR;
-        this.smoothedGazePoint.y += (this.gazePoint.y - this.smoothedGazePoint.y) * this.SMOOTHING_FACTOR;
-        
-        console.log(`✅ Valid | Raw: (${this.gazePoint.x.toFixed(1)}, ${this.gazePoint.y.toFixed(1)}) → Smoothed: (${this.smoothedGazePoint.x.toFixed(1)}, ${this.smoothedGazePoint.y.toFixed(1)})`);
+
+    if (isGazeValid === true && newGazePoint &&
+      typeof newGazePoint.x === 'number' &&
+      typeof newGazePoint.y === 'number') {
+
+      this.gazePoint.x = newGazePoint.x;
+      this.gazePoint.y = newGazePoint.y;
+
+      this.smoothedGazePoint.x += (this.gazePoint.x - this.smoothedGazePoint.x) * this.SMOOTHING_FACTOR;
+      this.smoothedGazePoint.y += (this.gazePoint.y - this.smoothedGazePoint.y) * this.SMOOTHING_FACTOR;
+
+      console.log(`✅ Valid | Raw: (${this.gazePoint.x.toFixed(1)}, ${this.gazePoint.y.toFixed(1)}) → Smoothed: (${this.smoothedGazePoint.x.toFixed(1)}, ${this.smoothedGazePoint.y.toFixed(1)})`);
     }
-    // 시선이 유효하지 않을 때는 이전 smoothed 값 유지 (로그 없음)
 
     this.eyeGazeIndicator.x = this.smoothedGazePoint.x;
     this.eyeGazeIndicator.y = this.smoothedGazePoint.y;
-    
+
     this.eyeGazeIndicator.clear();
-    this.eyeGazeIndicator.fillStyle(0xff0000, 0.7); 
-    this.eyeGazeIndicator.fillCircle(0, 0, 10); 
-    this.eyeGazeIndicator.setVisible(true); 
+    this.eyeGazeIndicator.fillStyle(0xff0000, 0.7);
+    this.eyeGazeIndicator.fillCircle(0, 0, 10);
+    this.eyeGazeIndicator.setVisible(true);
 
     if (!this.balloon || this.isFired) return;
 
@@ -192,28 +185,28 @@ export class ArcheryGameScene extends Phaser.Scene {
 
   updateChargeGauge() {
     this.chargeGauge.clear();
-    
+
     this.chargeGauge.fillStyle(0x444444, 0.8);
     this.chargeGauge.fillRect(0, 0, 400, 30);
-    
+
     const chargeWidth = (this.chargeAmount / GAZE_CHARGE_DURATION) * 400;
-    
+
     if (this.chargeAmount >= GAZE_CHARGE_DURATION) {
       this.chargeGauge.fillStyle(0x00ff00, 0.9);
     } else {
       this.chargeGauge.fillStyle(0xffa500, 0.9);
     }
-    
+
     this.chargeGauge.fillRect(0, 0, chargeWidth, 30);
   }
 
   fireArrow() {
     if (this.chargeAmount >= GAZE_CHARGE_DURATION && !this.isFired && this.player && this.balloon) {
       this.isFired = true;
-      
+
       const arrow = this.add.sprite(this.player.x, this.player.y, 'arrow');
       this.player.anims.stop();
-      
+
       arrow.setScale(0.09);
 
       this.tweens.add({
