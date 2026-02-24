@@ -1,0 +1,23 @@
+# 모델 학습 결과 (대용량 파일)
+EyeT_project/runs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.env
+.venv
+venv/
+
+# 데이터셋
+*.zip
+*.tar.gz
+
+# macOS
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
